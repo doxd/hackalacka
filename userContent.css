@@ -1,0 +1,43 @@
+/* Install to
+   ~/.mozilla/firefox/xxxxxxxx.default/chrome/userContent.css
+   %APPDATA%\Mozilla\Firefox\Profiles\xxxxxxxx.default\chrome\userContent.css
+*/
+
+div, h1, h2, h3, h4, h5, h6, span {
+  background-color: #303030 !important;
+  color: #cccccc !important;
+}
+
+a {		
+	color: #a0f0ff !important;
+}
+
+input {
+  background-color: #303030 !important;
+  color: #cccccc !important;
+}
+
+textarea {
+  background-color: #303030 !important;
+  color: #cccccc !important;
+}
+
+select {
+  background-color: #303030 !important;
+  color: #cccccc !important;
+}
+
+*|*::-moz-radio {
+  background-color: #303030 !important;
+
+}
+
+button {
+   background-color: #303030 !important;
+  color: #cccccc !important;
+}
+
+body {
+  background-color: #303030 !important;
+  color: #cccccc !important;
+}
