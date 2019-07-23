@@ -25,7 +25,10 @@
       *	`1` -> The revision level (the version of the SID specification).
       *	`5` -> The identifier authority value. (5 is most common, =	NT AUTHORITY)
       * `21-3623811015-3361044348-30300820` -> Domain or local computer identifier. In principle, globally unique.
-      * `1013` -> A Relative ID (RID). Any group or user that is not created by default will have a Relative ID of 1000 or greater. RID 500 is built-in default Administrator account
+      * `1013` -> A Relative ID (RID). Any group or user that is not created by default will have a Relative ID of 1000 or greater. Interesting RIDs:
+        * `500` - built-in default Administrator account
+        * `512` - built-in Domain Administrators
+        * `519` - built-in Enterprise Administrators
     * user accounts are issued *security tokens* during authentication that include user's SID and all related group SIDs
     * Shared resources on a network include ACL defining who can access the resource
     * Security token is compared against DACL on resource and access is granted or denied. 

