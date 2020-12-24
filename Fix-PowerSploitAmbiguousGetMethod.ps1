@@ -1,0 +1,1 @@
+$f = $f.replace("`$GetProcAddress = `$UnsafeNativeMethods.GetMethod('GetProcAddress')","`$GetProcAddress = `$UnsafeNativeMethods.GetMethod('GetProcAddress', [reflection.bindingflags] `"Public,Static`", `$null, [System.Reflection.CallingConventions]::Any, @((New-Object System.Runtime.InteropServices.HandleRef).GetType(), [string]), `$null);")
