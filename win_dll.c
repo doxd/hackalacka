@@ -1,5 +1,6 @@
 // Compile for 64-bit: x86_64-w64-mingw32-gcc -shared -o /dev/shm/legit.dll win_dll.c
 // Compile for 32-bit: i686-w64-mingw32-gcc -shared -o /dev/shm/legit32.dll win_dll.c
+// Compile for visual studio: cl /LD testdll.c /link user32.lib
 
 // Run exported function: rundll32.exe \\host\share\legit.dll,test
 // * DllMain runs first, when DLL is loaded.
